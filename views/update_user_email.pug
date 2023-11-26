@@ -1,0 +1,30 @@
+doctype html
+html
+  head
+    title Update User Email
+    link(href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet")
+    style.
+      .button-container {
+        display: flex;
+        gap: 10px; 
+      }
+
+  body
+    div(class="container")
+      h1 Update User Email
+      if error 
+        p(class="alert alert-danger")=error
+      if success 
+        p(class="alert alert-success")=success
+      p
+        strong Current Email:
+        span= logged_user.email
+
+      form(action='/update_user_email' method='post')
+        label(for='email') Email:
+        input(type='email' id='new_email' name='new_email' value=email)
+        br
+        br
+        .button-container
+          input(type='submit' value='Update')
+          button(type='button' onclick="window.location.href='/user_details'") Cancel
