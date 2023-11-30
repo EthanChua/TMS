@@ -7,7 +7,6 @@
 */
 const dotenv = require("dotenv").config();
 const express = require('express');
-const session = require('express-session');
 const bodyParser = require('body-parser');
 const app = express();
 const pool = require('./config/database');
@@ -48,7 +47,6 @@ async function login(username, password) {
         };
         console.log(logged_User);
         return logged_User;
-
       } else {
         return null;
       }
@@ -57,7 +55,48 @@ async function login(username, password) {
     }
   }
 
-//async function createUser()
+async function createUser(username, password, email, roles, isActive){
+    try{
+        const query = 'INSERT INTO accounts (username, password, email, roles, isActive) values (?, ?, ?, ?, ?)';
+        result = await pool.query(query, [username, password, email, roles, isActive]);
+        return result;
+    } catch(error){
+        throw error;
+    }
+    
+}
+
+app.post('/createUser', async (req,res) => {
+    const { username, password, email= null, roles= null, isActive= 1} = req.body;
+    //let result;
+    if (username !=null){
+        if(validPassword(password)){
+            try{ result = await createUser(username, password, email, roles, isActive)}
+            catch (e){return res.json({error: e})};
+            return res.json({error: null});
+        }
+        else {
+            res.json({error: 'Password must be minimum 8 characters and maximum 10 characters.'});
+        }
+    }
+    if (username === null) {
+        return res.json({error: 'Username is missing'})
+    }
+    if (password === null) {
+        return res.json({error: 'Password is missing'})
+    }
+    //console.log();
+});
+
+function validPassword(password) {
+    /*
+    var letter = /[a-zA-z]/
+    var number = /[0-9]/
+    var specialChar = /[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]/
+    */
+    const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
+    return regex.test(password);
+}
 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
@@ -76,7 +115,8 @@ app.post('/login', async (req, res) => {
      return res.json({error: null});
 });
 
-app.get('/logout', )
+//app.get('/logout', )
+
 //App listening on port
 const PORT = process.env.PORT;
 app.listen(PORT, () =>
