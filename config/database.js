@@ -13,14 +13,4 @@ const pool = mysql.createPool({
     queueLimit: 0,
 });
 
-/*
-let sql = "SELECT * FROM accounts;";
-
-pool.execute(sql, function (err,result){
-    if (err) throw err;
-
-    console.log(result);
-});
-*/
-
 module.exports = pool.promise();
