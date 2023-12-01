@@ -1,18 +1,17 @@
 /*
 //note* how express handle status 200 ok, 400 error
-// use promise instead of callbacks 
 // change functions to GET, POST, PATCH, DELETE or CRUD
-// Data in JSON format
 // Checkgroup(userid,groupname) // implement as API so can it solve the issue of stale data
 */
 const dotenv = require("dotenv").config();
-const express = require('express');
-const bodyParser = require('body-parser');
-const app = express();
 const pool = require('./config/database');
+const express = require('express');
+const router= express.Router();
+const app = express();
+const bodyParser = require('body-parser');
 const cors = require('cors')
 const axiosRequest= require('axios');
-const router= express.Router();
+
 
 //Routes (to change)
 /*
@@ -26,8 +25,6 @@ router.route("/admin/edit")
 router.route("/admin/group")
 router.route("/CheckGroup")
 */
-
-
 
 //Inititalize the app and add middleware
 app.use(express.json()); //parse json bodies in the request object
@@ -55,6 +52,7 @@ async function login(username, password) {
     }
   }
 
+// Create
 async function createUser(username, password, email, roles, isActive){
     try{
         const query = 'INSERT INTO accounts (username, password, email, roles, isActive) values (?, ?, ?, ?, ?)';
@@ -68,15 +66,22 @@ async function createUser(username, password, email, roles, isActive){
 
 app.post('/createUser', async (req,res) => {
     const { username, password, email= null, roles= null, isActive= 1} = req.body;
-    //let result;
+    const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
+
     if (username !=null){
-        if(validPassword(password)){
-            try{ result = await createUser(username, password, email, roles, isActive)}
+        if(regex.test(password)){
+            try{ 
+                await createUser(username, password, email, roles, isActive);
+
+                return res.json({
+                    success: true,
+                    message: "Account created"
+                });
+            }
             catch (e){return res.json({error: e})};
-            return res.json({error: null});
         }
         else {
-            res.json({error: 'Password must be minimum 8 characters and maximum 10 characters.'});
+            res.json({error: 'Password does not meet criteria!'});
         }
     }
     if (username === null) {
@@ -85,18 +90,15 @@ app.post('/createUser', async (req,res) => {
     if (password === null) {
         return res.json({error: 'Password is missing'})
     }
-    //console.log();
 });
 
+/*
 function validPassword(password) {
-    /*
-    var letter = /[a-zA-z]/
-    var number = /[0-9]/
-    var specialChar = /[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]/
-    */
+    
     const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
     return regex.test(password);
 }
+*/
 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
@@ -112,10 +114,16 @@ app.post('/login', async (req, res) => {
     if (user.password != password) {
         return res.json({error: 'wrong user or password'});
     }
-     return res.json({error: null});
+     return res.json({
+        success: true,
+        message: "Successful log in",
+        data: { username }
+    });
 });
 
-//app.get('/logout', )
+//app.post('/logout', )
+//app.post('/adminEdit',)
+//app/post('/userEdit',)
 
 //App listening on port
 const PORT = process.env.PORT;
@@ -124,3 +132,8 @@ app.listen(PORT, () =>
 );
 
 
+/*
+    var letter = /[a-zA-z]/
+    var number = /[0-9]/
+    var specialChar = /[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]/
+    */
