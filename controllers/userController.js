@@ -1,9 +1,6 @@
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-//const express = require('express');
-//const bodyParser = require('body-parser');
-//const dotenv = require("dotenv").config();
 
 //Login function
 exports.userlogin = async (req, res, next)=> {
@@ -22,16 +19,17 @@ exports.userlogin = async (req, res, next)=> {
               };
             }
 
-            if (logged_User.password === password) {
+            if (checkPassword = await bcrypt.compare(password,logged_User.password)) {
               return res.json({
                 success: true,
                 message: "Successful log in",
                 data: { username }
               });
+
             } else {
               return res.json({
                 success: false,
-                message: "wrong user or password"});
+                message: "wrong username or password"});
             }
               //console.log(logged_User);
         } else {
@@ -43,7 +41,7 @@ exports.userlogin = async (req, res, next)=> {
     catch (e){ return res.json({error: e})};
 };
 
-//Create User function, TODO: hashing, JWT, Session
+//Create User function, @TODO JWT, cookies
 exports.createUser = async (req, res, next)=> {
   const { username, password, email= null, roles= null, isActive= 1} = req.body;
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
@@ -53,7 +51,8 @@ exports.createUser = async (req, res, next)=> {
         if(regex.test(password)){
           const query = 'INSERT INTO accounts (username, password, email, roles, isActive) values (?, ?, ?, ?, ?)';
           
-          result = await pool.query(query, [username, password, email, roles, isActive]);
+          const hashP= await bcrypt.hash(password, 10);
+          result = await pool.query(query, [username, hashP, email, roles, isActive]);
             
           return res.json({
             success: true,
@@ -100,17 +99,23 @@ exports.uUserEdit = async (req, res, next)=> {
   //query to update user, 
 };
 
-//Checkgroup API
-exports.Checkgroup = async (req, res, next)=> {
- const authorized = await this.Checkgroup(req.body.username, req.body.usergroup)
- return res.json({
-  usergroup: authorized
- })
-};
-
 //Display all user into admin dashboard
 exports.showAllUser = async (req, res, next)=> {
 
+};
+
+//Checkgroup API
+exports.Checkgroup = async (req, res, next)=> {
+  try{
+    const authorized = await Checkgroup(req.body.username, req.body.usergroup)
+
+    return res.json({
+      usergroup: authorized
+    })
+  } catch (e) {
+
+  }
+ 
 };
 
 //functions
@@ -122,6 +127,9 @@ const Checkgroup = async (userid, groupname) => {
  return result.length >0 ;
 };
 
+//const getJwtToken = ()
+
+//cookies can't store anything else only username, only can have 1 instance
 /* template
 exports.aUserEdit = async (req, res, next)=> {
   const { username } = req.body;
