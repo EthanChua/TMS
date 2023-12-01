@@ -11,16 +11,17 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors')
 const axiosRequest= require('axios');
+const { userlogin, createUser } = require("./controllers/userController");
 
 
-//Routes (to change)
+//Routes
+router.route("/login").post(userlogin)
+router.route("/user/create").post(createUser)
 /*
-router.route("/login").post()
 router.route("/logout").get(isVerifiedUser,logout)
 router.route("/profile")
 router.route("profile/edit")
 router.route("/admin")
-router.route("/admin/create")
 router.route("/admin/edit")
 router.route("/admin/group")
 router.route("/CheckGroup")
@@ -30,7 +31,9 @@ router.route("/CheckGroup")
 app.use(express.json()); //parse json bodies in the request object
 app.use(bodyParser.urlencoded({ extended: true })); // Setup the body parser to handle form submits
 app.use(cors());
+app.use(router);
 
+/*
 //  login function
 async function login(username, password) {
     try {
@@ -51,7 +54,9 @@ async function login(username, password) {
       throw error;
     }
   }
+*/
 
+/*
 // Create
 async function createUser(username, password, email, roles, isActive){
     try{
@@ -63,7 +68,8 @@ async function createUser(username, password, email, roles, isActive){
     }
     
 }
-
+*/
+/*
 app.post('/createUser', async (req,res) => {
     const { username, password, email= null, roles= null, isActive= 1} = req.body;
     const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
@@ -91,6 +97,7 @@ app.post('/createUser', async (req,res) => {
         return res.json({error: 'Password is missing'})
     }
 });
+*/
 
 /*
 function validPassword(password) {
@@ -99,7 +106,7 @@ function validPassword(password) {
     return regex.test(password);
 }
 */
-
+/*
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     let user;
@@ -120,7 +127,7 @@ app.post('/login', async (req, res) => {
         data: { username }
     });
 });
-
+*/
 //app.post('/logout', )
 //app.post('/adminEdit',)
 //app/post('/userEdit',)
