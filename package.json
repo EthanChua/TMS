@@ -2,7 +2,7 @@
   "name": "tms",
   "version": "1.0.0",
   "description": "TMS",
-  "main": "main.js",
+  "main": "app.js",
   "scripts": {
     "start": "node main.js",
     "dev": "nodemon app",
