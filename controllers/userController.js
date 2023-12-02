@@ -58,7 +58,7 @@ exports.log_out = async (req, res) => {
 
 //Create User function, @TODO JWT, cookies
 exports.createUser = async (req, res, next)=> {
-  const { username, password, email= null, roles= null, isActive= 1} = req.body;
+  const { username, password, email= null, roles= 'user', isActive= 1} = req.body;
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
 
   try{
@@ -84,34 +84,52 @@ exports.createUser = async (req, res, next)=> {
 };
 
 //admin edit User function * not done
-exports.aUserEdit = async (req, res, next)=> {
-  const { username } = req.body;
+exports.userEdit = async (req, res, next)=> {
+  const { username, password, email, roles,  } = req.body;
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
 
   try {
-    if (username != null) {
-      const query = 'SELECT * FROM accounts WHERE username=?';
-      const [rows, fields] = await pool.query(query, [username]);
-      let selectedUser;
-      
-          if (rows.length > 0) {
-            selectedUser = {
-              username: username,
-              password: rows[0].password
-            };
-          } 
-    } else {
-        return res.json({
-        success: false,
-        message: "Username is empty"});
-    }
 
   } catch (e){return res.json({error: e})};
 };
 
 //User edit User function
-exports.uUserEdit = async (req, res, next)=> {
-  //query to update user, 
+exports.userUpdate = async (req, res, next)=> {
+  const { username, email, password} = req.body;
+  const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
+  let emailChanged, passwordChanged;
+
+  try{
+
+    if(email != null && email != ""){
+      emailChanged = await changeEmail(username, email);
+    }
+
+    if(password != null && password !=""){
+      if(regex.test(password)){
+        const hashedPassword = await bcrypt.hash(password, 10);
+        passwordChanged = await changePassword(username, hashedPassword);
+      } else {
+        return res.json ({
+          success: false,
+          message: "Error: Password must be 8-10 characters long, with at least 1 letter, 1 alphabet and 1 special character "
+        })
+      }
+    }
+
+    //Notify user if changes updated
+    if(emailChanged || passwordChanged){
+      return res.status(200).json ({
+        success: true,
+        message: "Profile updated"
+      })
+    } else {
+      return res.json ({
+        success: false,
+        message: "nothing to update"
+      })
+    }
+  } catch (e) { return res.json({error: e}) }
 };
 
 //Display all user into admin dashboard
@@ -127,20 +145,33 @@ exports.Checkgroup = async (req, res, next)=> {
     return res.json({
       usergroup: authorized
     })
-  } catch (e) {
-
-  }
- 
+  } catch (e) { return res.json({error: e}) }
 };
 
-//functions
-const Checkgroup = async (userid, groupname) => {
- const query=`SELECT roles FROM accounts WHERE username ? AND roles LIKE ?`;
- const values = [userid, `%${groupname}%`]
-
- const result = await pool.query(query, [values]);
- return result.length >0 ;
+//functions @TODO: solve admin is in a all usergroup issue
+async function Checkgroup(userid, groupname) {
+  
+  const query=`SELECT roles FROM accounts WHERE username = ? AND roles LIKE ?`;
+  const result = await pool.query(query, [userid, `%${groupname}%`]);
+  console.log(result[0]);
+  return result[0].length >0 ;
 };
+
+async function changeEmail(username, email) {
+  const query= `UPDATE accounts SET email = ? WHERE username =?`;
+  try{
+  const result = await pool.query(query, [email, username]);
+  return result[0].affectedRows;
+  } catch (e) {return res.json({error: e})}
+};
+
+async function changePassword(username, password) {
+  const query= `UPDATE accounts SET password =? WHERE username=?`;
+  try{
+    const result = await pool.query(query, [password, username]);
+    return result[0].affectedRows;
+  } catch (e) {return res.json({error: e})}
+}
 
 //const getJwtToken = ()
 

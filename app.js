@@ -7,22 +7,23 @@ const router= express.Router();
 const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors')
-const { userlogin, createUser } = require("./controllers/userController");
+const { userlogin, createUser, Checkgroup, log_out, userUpdate} = require("./controllers/userController");
 const dotenv = require("dotenv").config();
 
 //Routes
 //Service Access
 router.route("/login").post(userlogin)
-router.route("/log_out").post()
+router.route("/log_out").get(log_out)
 router.route("/login/checkUser").post()
 
 //Access Control
-router.route("/checkgroup").post() //check user is of which usergroup
+router.route("/checkgroup").post(Checkgroup) //check user have access rights
 
 //Services
 router.route("/user").post() 
-router.route("/user/create").post(createUser) //admin create new users
-router.route("/user/edit").post() //edit users
+router.route("/user/register").post(createUser) //admin create new users
+router.route("/user/edit").post() // admin edit users
+router.route("/user/update").post(userUpdate)// self update user details
 router.route("/user/getall").post() //show all users
 router.route("/group/getall").post() 
 router.route("/group/create").post() //create groups
