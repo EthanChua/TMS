@@ -41,6 +41,21 @@ exports.userlogin = async (req, res, next)=> {
     catch (e){ return res.json({error: e})};
 };
 
+//Logout function
+exports.log_out = async (req, res) => {
+  //remove cookie
+  res.cookie('token', null, {
+    expires: new Date(Date.now()),
+    httpOnly: true
+  });
+
+  //return log out sucess response
+  res.status(200).json({
+    success: true,
+    message: 'logged out'
+  })
+}
+
 //Create User function, @TODO JWT, cookies
 exports.createUser = async (req, res, next)=> {
   const { username, password, email= null, roles= null, isActive= 1} = req.body;
