@@ -1,3 +1,6 @@
+/*
+//@note: spacebar check, include notify user no spacebar
+*/
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -83,14 +86,72 @@ exports.createUser = async (req, res, next)=> {
   } catch (e){return res.json({error: e})};
 };
 
-//admin edit User function * not done
+//admin edit User function 
 exports.userEdit = async (req, res, next)=> {
-  const { username, password, email, roles,  } = req.body;
+  const { username, password, email, roles, isActive } = req.body;
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
+  let emailChanged, passwordChanged, rolesChanged, statusChanged;
 
   try {
+    // Check is user exist
+    const checkUserExist = "SELECT * FROM accounts WHERE username= ?"; 
+    const [row, fields] = await pool.query(checkUserExist,[username]);
+    
+    if (row.length===(0)){
+      return res.json({
+        success: false,
+        message:"user not found"
+      })
+    }
+    //email change
+    if(email != null && email != ""){
+      emailChanged = await changeEmail(username, email);
+    }
+    //password change
+    if(password != null && password !=""){
+      if(regex.test(password)){
+        const hashedPassword = await bcrypt.hash(password, 10);
+        passwordChanged = await changePassword(username, hashedPassword);
+      } else {
+        return res.json ({
+          success: false,
+          message: "Error: Password must be 8-10 characters long, with at least 1 letter, 1 alphabet and 1 special character "
+        })
+      }
+    }
+    //roles change, groupname, grouplist to implement
+    if(roles != null && roles != ""){
+      const query= `UPDATE accounts SET roles = ? WHERE username =?`;
+      try{
+        const result = await pool.query(query, [roles, username]);
+        rolesChanged= result[0].affectedRows;
+        } catch (e) {return res.json({error: e})}
+    }
 
-  } catch (e){return res.json({error: e})};
+    // change user status
+    if(isActive != null && isActive !=""){
+      const query= `UPDATE accounts SET isActive = ? WHERE username =?`;
+      try{
+        if(isActive === "1" || isActive === "0"){
+          const result = await pool.query(query, [isActive, username]);
+          statusChanged= result[0].affectedRows;
+        } else {return res.status(400).json({success: false, message:"invalid status"})}
+      } catch (e) {return res.json({error: e})}
+    }
+
+     //Notify user if changes updated
+     if(emailChanged || passwordChanged || rolesChanged || statusChanged){
+      return res.status(200).json ({
+        success: true,
+        message: "Profile updated"
+      })
+    } else {
+      return res.json ({
+        success: false,
+        message: "Update Failed"
+      })
+    }
+  } catch (e){return res.status(500).json({success: false, message: e});}
 };
 
 //User edit User function
@@ -100,7 +161,6 @@ exports.userUpdate = async (req, res, next)=> {
   let emailChanged, passwordChanged;
 
   try{
-
     if(email != null && email != ""){
       emailChanged = await changeEmail(username, email);
     }
@@ -126,10 +186,15 @@ exports.userUpdate = async (req, res, next)=> {
     } else {
       return res.json ({
         success: false,
-        message: "nothing to update"
+        message: "Update Failed"
       })
     }
-  } catch (e) { return res.json({error: e}) }
+  } catch (e) { 
+    return res.status(500).json({
+      success: false,
+      message: e
+    });
+    }
 };
 
 //Display all user into admin dashboard
@@ -157,6 +222,7 @@ async function Checkgroup(userid, groupname) {
   return result[0].length >0 ;
 };
 
+//changeEmail and Password could combine into api
 async function changeEmail(username, email) {
   const query= `UPDATE accounts SET email = ? WHERE username =?`;
   try{
@@ -171,7 +237,7 @@ async function changePassword(username, password) {
     const result = await pool.query(query, [password, username]);
     return result[0].affectedRows;
   } catch (e) {return res.json({error: e})}
-}
+};
 
 //const getJwtToken = ()
 
