@@ -1,5 +1,7 @@
 /*
 //@note: spacebar check, include notify user no spacebar
+//@TODO: implement group_list, refactor functions, put in correct error messages
+//@TODO: implement errorhandling
 */
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
@@ -10,7 +12,7 @@ exports.userlogin = async (req, res, next)=> {
     const { username, password } = req.body;
 
     try {
-      if (username != null && password != null) {
+      if (username != null && password != null) { //factor in blank fields revise
         const query = 'SELECT * FROM accounts WHERE username=? AND isActive=1';
         const [rows, fields] = await pool.query(query, [username]);
         let logged_User;
@@ -23,25 +25,46 @@ exports.userlogin = async (req, res, next)=> {
             }
 
             if (checkPassword = await bcrypt.compare(password,logged_User.password)) {
-              return res.json({
-                success: true,
-                message: "Successful log in",
-                data: { username }
-              });
-
-            } else {
+              return sendToken(logged_User,200, res);
+            } else { //split conditions revise
               return res.json({
                 success: false,
-                message: "wrong username or password"});
+                message: "Invalid username or password"});
             }
-              //console.log(logged_User);
         } else {
           return res.json({
             success: false,
             message: "Username or Password field is empty"});
         }
+        
     }
-    catch (e){ return res.json({error: e})};
+    catch (e){ return res.json({error: e.stack})};
+};
+
+//In progress, need check revise
+exports.isLogin = async (req, res, next)=> {
+  let decoded;
+  const query = 'SELECT * FROM accounts WHERE username =?';
+  
+  if(token === "null" || !token) {
+    return false;
+  }
+
+  try {
+    decoded = jwt.verify(token,process.env.JWT_SECRET);
+} catch (err) {
+    return false;
+}
+    
+const [row, fields] = await pool.query(query, [decoded.username]);
+const user = row[0];
+if (user != undefined || user.isActive === 0)
+{
+  return false;
+}
+return true;
+
+
 };
 
 //Logout function
@@ -156,7 +179,7 @@ exports.userEdit = async (req, res, next)=> {
 
 //User edit User function
 exports.userUpdate = async (req, res, next)=> {
-  const { username, email, password} = req.body;
+  const { username, email, password} = req.user.username; //changed from body, ask sebs revise
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
   let emailChanged, passwordChanged;
 
@@ -179,6 +202,7 @@ exports.userUpdate = async (req, res, next)=> {
 
     //Notify user if changes updated
     if(emailChanged || passwordChanged){
+      sendToken(user,200, res); //revise
       return res.status(200).json ({
         success: true,
         message: "Profile updated"
@@ -239,8 +263,33 @@ async function changePassword(username, password) {
   } catch (e) {return res.json({error: e})}
 };
 
-//const getJwtToken = ()
+//JWT note the user object
+const getJwtToken = user =>{
+  return jwt.sign({username: user.username}, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_TIME
+  });
+}
 
+const sendToken = (user, statusCode, res) => {
+  //Create JWToken
+  const token = getJwtToken(user);
+
+  const options = {
+    expiresIn: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES * 24 * 60 * 60 *1000),
+    httpOnly:true
+  };
+
+  //ask about cookie parser
+  return res 
+      .status(statusCode)
+      .cookie('token', token, options)
+      .json({
+          success: true,
+          token,
+          username: user.username,
+          //group_list:user.group_list
+  })
+}
 //cookies can't store anything else only username, only can have 1 instance
 /* template
 exports.aUserEdit = async (req, res, next)=> {
