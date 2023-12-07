@@ -7,26 +7,23 @@ const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-//Login function
+//Login function @TODO @TOCHECK
 exports.userlogin = async (req, res, next)=> {
     const { username, password } = req.body;
 
     try {
       if (username != null && password != null) { //factor in blank fields revise
         const query = 'SELECT * FROM accounts WHERE username=? AND isActive=1';
-        const [rows, fields] = await pool.query(query, [username]);
-        let logged_User;
+        const result = await pool.query(query, [username]);
+        let user;
         
-            if (rows.length > 0) {
-              logged_User = {
-                username: username,
-                password: rows[0].password
-              };
+            if (result.length > 0) {
+              user = result[0][0];
             }
 
-            if (checkPassword = await bcrypt.compare(password,logged_User.password)) {
-              return sendToken(logged_User,200, res);
-            } else { //split conditions revise
+            if (password === user.password) { // *IMPT* in final <checkPassword = await bcrypt.compare(password,user.password)>
+              return sendToken(user,200, res);
+            } else {
               return res.json({
                 success: false,
                 message: "Invalid username or password"});
@@ -41,56 +38,22 @@ exports.userlogin = async (req, res, next)=> {
     catch (e){ return res.json({error: e.stack})};
 };
 
-//In progress, need check revise
-exports.isLogin = async (req, res, next)=> {
-  let decoded;
-  const query = 'SELECT * FROM accounts WHERE username =?';
-  
-  if(token === "null" || !token) {
-    return false;
-  }
-
-  try {
-    decoded = jwt.verify(token,process.env.JWT_SECRET);
-} catch (err) {
-    return false;
-}
-    
-const [row, fields] = await pool.query(query, [decoded.username]);
-const user = row[0];
-if (user != undefined || user.isActive === 0)
-{
-  return false;
-}
-return true;
-
-
-};
-
-//Logout function
+//Logout function @DONE
 exports.log_out = async (req, res) => {
   //remove cookie
-  res.cookie('token', null, {
-    expires: new Date(Date.now()),
-    httpOnly: true
-  });
-
-  //return log out sucess response
-  res.status(200).json({
-    success: true,
-    message: 'logged out'
-  })
+  res.clearCookie ('token').end();
+  
 }
 
-//Create User function, @TODO JWT, cookies
+//Create User function, @TODO @TOCHECK
 exports.createUser = async (req, res, next)=> {
-  const { username, password, email= null, roles= 'user', isActive= 1} = req.body;
+  const { username, password, email= null, roles= null, isActive= 1} = req.body;
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
 
   try{
       if (username !=null && password!= null){
         if(regex.test(password)){
-          const query = 'INSERT INTO accounts (username, password, email, roles, isActive) values (?, ?, ?, ?, ?)';
+          const query = "INSERT INTO accounts (username, password, email, `roles`, isActive) values (?, ?, ?, ?, ?)";
           
           const hashP= await bcrypt.hash(password, 10);
           result = await pool.query(query, [username, hashP, email, roles, isActive]);
@@ -109,7 +72,7 @@ exports.createUser = async (req, res, next)=> {
   } catch (e){return res.json({error: e})};
 };
 
-//admin edit User function 
+//admin edit User function @TOCHECK
 exports.userEdit = async (req, res, next)=> {
   const { username, password, email, roles, isActive } = req.body;
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
@@ -177,9 +140,33 @@ exports.userEdit = async (req, res, next)=> {
   } catch (e){return res.status(500).json({success: false, message: e});}
 };
 
-//User edit User function
+//to get user info
+exports.getUser = async (req, res, next)=> {
+  const {username} = req.user.username;
+
+  try{
+    const query="SELECT username, email, roles FROM accounts WHERE username =?";
+    const result = await pool.query(query, [username])
+
+    return res.status(200).json({
+      success:true,
+      message: "user details found",
+      data: result[0][0]
+    });
+  } catch(e) {
+    return res.status(500).json({
+      success:false,
+      message: e
+    })
+  }
+};
+
+//User edit User function @TOCHECK
 exports.userUpdate = async (req, res, next)=> {
-  const { username, email, password} = req.user.username; //changed from body, ask sebs revise
+  const { email, password} = req.body;
+  const username = req.user.username;
+  const user = req.user
+  
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
   let emailChanged, passwordChanged;
 
@@ -192,6 +179,7 @@ exports.userUpdate = async (req, res, next)=> {
       if(regex.test(password)){
         const hashedPassword = await bcrypt.hash(password, 10);
         passwordChanged = await changePassword(username, hashedPassword);
+
       } else {
         return res.json ({
           success: false,
@@ -199,14 +187,9 @@ exports.userUpdate = async (req, res, next)=> {
         })
       }
     }
-
     //Notify user if changes updated
     if(emailChanged || passwordChanged){
-      sendToken(user,200, res); //revise
-      return res.status(200).json ({
-        success: true,
-        message: "Profile updated"
-      })
+     return sendToken(user,200, res); //revise
     } else {
       return res.json ({
         success: false,
@@ -221,12 +204,31 @@ exports.userUpdate = async (req, res, next)=> {
     }
 };
 
-//Display all user into admin dashboard
+//Display all user into admin dashboard @DONE
 exports.showAllUser = async (req, res, next)=> {
 
+  //const {username} = req.body.username; ERROR here
+  try{
+    const query = "SELECT username, email, roles, isActive FROM accounts"
+    const result = await pool.query(query);
+  
+
+    return res.status(200).json({
+      success:true,
+      message:"user details loaded",
+      data: result[0]
+    });
+    
+  } catch(e) {
+    res.status(500).json({
+      success:false,
+      message: e
+    });
+    return;
+  }
 };
 
-//Checkgroup API
+//Checkgroup API @TOCHECK
 exports.Checkgroup = async (req, res, next)=> {
   try{
     const authorized = await Checkgroup(req.body.username, req.body.usergroup)
@@ -237,17 +239,85 @@ exports.Checkgroup = async (req, res, next)=> {
   } catch (e) { return res.json({error: e}) }
 };
 
+//Create user groups @DONE
+exports.createGroup = async (req, res, next)=> {
+  const { groupName } =req.body;
+  const groupRegex = /^[0-9a-zA-Z]+$/
+  
+  if (!groupRegex.test(groupName)) {
+    res.status(400).json({
+      success:false,
+      message:"Group name should not have space, only numbers and alphabets"
+    })
+    return;
+  }
+
+  try{
+    const query = "INSERT INTO group_list (groupName) values (?)"
+    const result = await pool.query(query, [groupName]);
+
+    if (result[0].affectedRows ===0) {
+      res.status(500).json({
+        success: false,
+        message: "Unable to create user group"
+      })
+      return;
+    };
+
+    return res.status(200).json({
+      success:true,
+      message: "Group Created"
+    })
+
+  } catch(e) {
+      if(e.code ==="ER_DUP_ENTRY") {
+        res.status(500).json({
+          success: false,
+          message: `'${groupName}' already exists` 
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message: e
+      });
+      return;
+  }
+};
+
+exports.getGroups = async (req, res, next) => {
+    try{
+        const query= "SELECT groupName FROM group_list"
+        const result = await pool.query(query)
+
+        return res.status(200).json({
+          success: true,
+          message:"retrieved group names",
+          data: result[0]
+        });
+      } catch (e) {
+      return res.status(500).json({
+        success:false,
+        message: e
+      });
+    }
+};
+
 //functions @TODO: solve admin is in a all usergroup issue
 async function Checkgroup(userid, groupname) {
   
   const query=`SELECT roles FROM accounts WHERE username = ? AND roles LIKE ?`;
   const result = await pool.query(query, [userid, `%${groupname}%`]);
-  console.log(result[0]);
-  return result[0].length >0 ;
+  if(result[0][0]){
+    return true;
+  } else {
+    return false;
+  }
 };
 
 //changeEmail and Password could combine into api
 async function changeEmail(username, email) {
+  
   const query= `UPDATE accounts SET email = ? WHERE username =?`;
   try{
   const result = await pool.query(query, [email, username]);
@@ -263,22 +333,17 @@ async function changePassword(username, password) {
   } catch (e) {return res.json({error: e})}
 };
 
-//JWT note the user object
-const getJwtToken = user =>{
-  return jwt.sign({username: user.username}, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_TIME
-  });
-}
-
 const sendToken = (user, statusCode, res) => {
   //Create JWToken
-  const token = getJwtToken(user);
+  console.log(user)
+  const token = jwt.sign({username: user.username}, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_TIME
+  });//getJwtToken(user);
 
   const options = {
     expiresIn: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES * 24 * 60 * 60 *1000),
     httpOnly:true
   };
-
   //ask about cookie parser
   return res 
       .status(statusCode)
@@ -286,20 +351,51 @@ const sendToken = (user, statusCode, res) => {
       .json({
           success: true,
           token,
-          username: user.username,
+          username: user.username
           //group_list:user.group_list
   })
-}
-//cookies can't store anything else only username, only can have 1 instance
-/* template
-exports.aUserEdit = async (req, res, next)=> {
-  const { username } = req.body;
-  
-  try {
-
-  } catch (e){return res.json({error: e})};
 };
+
+/*
+//JWT note the user object
+const getJwtToken = user =>{
+  return jwt.sign({username: user.username}, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_TIME
+  });
+}
 */
+
+
+//@TODO 
+exports.checkLogin = async (req, res, next)=> {
+  let decoded;
+  let token;
+  const query = 'SELECT * FROM accounts WHERE username =?';
+    
+
+    if(token === "null" || !token) {
+      return false;
+    }
+
+    try {
+      decoded = jwt.verify(token,process.env.JWT_SECRET);
+      
+  } catch (err) {
+      return false;
+  }
+      
+  const [row, fields] = await pool.query(query, [decoded.username]);
+  const user = row[0];
+  if (user != undefined || user.isActive === 0)
+  {
+    return false;
+  }
+  return true;
+
+
+};
+
+
 
 
 
