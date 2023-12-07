@@ -335,7 +335,7 @@ async function changePassword(username, password) {
 
 const sendToken = (user, statusCode, res) => {
   //Create JWToken
-  console.log(user)
+
   const token = jwt.sign({username: user.username}, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_TIME
   });//getJwtToken(user);
