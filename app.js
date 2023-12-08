@@ -7,14 +7,14 @@ const router= express.Router();
 const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors')
-const { userlogin, createUser, Checkgroup, log_out, userUpdate, userEdit, createGroup, showAllUser, getGroups, getUser} = require("./controllers/userController");
+const { userlogin, createUser, Checkgroup, log_out, userUpdate, userEdit, createGroup, showAllUser, getGroups, getUser, toggleStatus} = require("./controllers/userController");
 const {validUser, authorizedGroups, adminProtect} = require("./controllers/authController");
 const dotenv = require("dotenv").config();
 
 //Routes
 
 //Access Control Route
-router.route("/Checkgroup").post(Checkgroup) //check user have access rights
+router.route("/Checkgroup").post(validUser, Checkgroup) //check user have access rights
 
 //All user route
 router.route("/login").post(userlogin)
@@ -30,7 +30,8 @@ router.route("/showUsers").get(validUser, authorizedGroups("admin"), showAllUser
 router.route("/showGroups").get(validUser, authorizedGroups("admin"),getGroups) //show all groups
 
 //Protected Routes
-router.route("/editUsers").post(validUser, authorizedGroups("admin"), adminProtect, userEdit) // admin edit users
+router.route("/editUsers").post(validUser, authorizedGroups("admin"), userEdit) // admin edit users
+router.route("/toggleStatus").post(validUser, authorizedGroups("admin"), toggleStatus) // status active or inactive
 
 //Inititalize the app and add middleware
 app.use(express.json()); //parse json bodies in the request object

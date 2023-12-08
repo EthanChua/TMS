@@ -68,16 +68,6 @@ exports.validUser = async (req, res, next) => {
 };
 
 
-exports.adminProtect = async (req, res, next) => {
-if (req.body.username === "admin" && req.user.username != "admin") {
-  return res.status(400).json({
-    success:false,
-    message:"Can't be edited"
-  });
-} else {
-  next();
-}
-};
 
  /*
   try{

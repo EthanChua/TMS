@@ -12,16 +12,18 @@ exports.userlogin = async (req, res, next)=> {
     const { username, password } = req.body;
 
     try {
-      if (username != null && password != null) { //factor in blank fields revise
+      if (username != null && password != null) { 
         const query = 'SELECT * FROM accounts WHERE username=? AND isActive=1';
         const result = await pool.query(query, [username]);
         let user;
+
         
-            if (result.length > 0) {
+            if (result[0].length > 0) {
               user = result[0][0];
             }
-
-            if (password === user.password) { // *IMPT* in final <checkPassword = await bcrypt.compare(password,user.password)>
+            
+      
+            if (checkPassword = await bcrypt.compare(password,user.password)) { // *IMPT* in final <checkPassword = await bcrypt.compare(password,user.password)>
               return sendToken(user,200, res);
             } else {
               return res.json({
@@ -74,7 +76,7 @@ exports.createUser = async (req, res, next)=> {
 
 //admin edit User function @TOCHECK
 exports.userEdit = async (req, res, next)=> {
-  const { username, password, email, roles, isActive } = req.body;
+  const { username, password, email, group_list, isActive } = req.body;
   const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"~\\|,.<>\/?]{8,10}$/;
   let emailChanged, passwordChanged, rolesChanged, statusChanged;
 
@@ -106,10 +108,10 @@ exports.userEdit = async (req, res, next)=> {
       }
     }
     //roles change, groupname, grouplist to implement
-    if(roles != null && roles != ""){
+    if(group_list != null && group_list != ""){
       const query= `UPDATE accounts SET roles = ? WHERE username =?`;
       try{
-        const result = await pool.query(query, [roles, username]);
+        const result = await pool.query(query, [group_list, username]);
         rolesChanged= result[0].affectedRows;
         } catch (e) {return res.json({error: e})}
     }
@@ -140,13 +142,42 @@ exports.userEdit = async (req, res, next)=> {
   } catch (e){return res.status(500).json({success: false, message: e});}
 };
 
+exports.toggleStatus= async (req, res, next)=> {
+  const {username, isActive} =req.body;
+  const query= `UPDATE accounts SET isActive = ? WHERE username =?`;
+  let result
+  console.log(isActive)
+
+  try{
+
+      result = await pool.query(query, [isActive, username]);
+
+    if (result[0].affectedRows===0){
+      return res.status(500).json({
+        success: false,
+        message: "update failed"
+      })
+    }
+
+    return res.status(200).json({
+      success:true,
+      message: "Profile updated"
+    })
+
+  } catch (e) {return res.json({error: e})}
+
+}
+
 //to get user info
 exports.getUser = async (req, res, next)=> {
-  const {username} = req.user.username;
+  const username = req.user.username;
+
+
 
   try{
     const query="SELECT username, email, roles FROM accounts WHERE username =?";
     const result = await pool.query(query, [username])
+
 
     return res.status(200).json({
       success:true,
@@ -209,7 +240,7 @@ exports.showAllUser = async (req, res, next)=> {
 
   //const {username} = req.body.username; ERROR here
   try{
-    const query = "SELECT username, email, roles, isActive FROM accounts"
+    const query = "SELECT username, email, roles, isActive FROM accounts where not username='admin'"
     const result = await pool.query(query);
   
 
@@ -228,16 +259,6 @@ exports.showAllUser = async (req, res, next)=> {
   }
 };
 
-//Checkgroup API @TOCHECK
-exports.Checkgroup = async (req, res, next)=> {
-  try{
-    const authorized = await Checkgroup(req.body.username, req.body.usergroup)
-
-    return res.json({
-      usergroup: authorized
-    })
-  } catch (e) { return res.json({error: e}) }
-};
 
 //Create user groups @DONE
 exports.createGroup = async (req, res, next)=> {
@@ -303,11 +324,23 @@ exports.getGroups = async (req, res, next) => {
     }
 };
 
+//Checkgroup API @TOCHECK
+exports.Checkgroup = async (req, res, next)=> {
+  try{
+    const authorized = await Checkgroup(req.user.username, req.body.usergroup)
+    return res.json({
+      usergroup: authorized
+    })
+  } catch (e) { return res.json({error: e}) }
+};
+
+
 //functions @TODO: solve admin is in a all usergroup issue
 async function Checkgroup(userid, groupname) {
   
   const query=`SELECT roles FROM accounts WHERE username = ? AND roles LIKE ?`;
   const result = await pool.query(query, [userid, `%${groupname}%`]);
+
   if(result[0][0]){
     return true;
   } else {
@@ -335,7 +368,6 @@ async function changePassword(username, password) {
 
 const sendToken = (user, statusCode, res) => {
   //Create JWToken
-
   const token = jwt.sign({username: user.username}, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_TIME
   });//getJwtToken(user);
@@ -345,6 +377,7 @@ const sendToken = (user, statusCode, res) => {
     httpOnly:true
   };
   //ask about cookie parser
+
   return res 
       .status(statusCode)
       .cookie('token', token, options)
@@ -355,15 +388,6 @@ const sendToken = (user, statusCode, res) => {
           //group_list:user.group_list
   })
 };
-
-/*
-//JWT note the user object
-const getJwtToken = user =>{
-  return jwt.sign({username: user.username}, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_TIME
-  });
-}
-*/
 
 
 //@TODO 
