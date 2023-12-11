@@ -389,7 +389,6 @@ const sendToken = (user, statusCode, res) => {
   })
 };
 
-
 //@TODO 
 exports.checkLogin = async (req, res, next)=> {
   let decoded;
