@@ -9,6 +9,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors')
 const { userlogin, createUser, Checkgroup, log_out, userUpdate, userEdit, createGroup, showAllUser, getGroups, getUser, toggleStatus} = require("./controllers/userController");
 const {validUser, authorizedGroups, adminProtect} = require("./controllers/authController");
+const { createApp, showAllApp, showApp, editApp, createPlan, showAllPlan, showPlan, editPlan, createTask, showAllTask, showTask, promoteTask, demoteTask } = require('./controllers/taskController');
 const dotenv = require("dotenv").config();
 
 //Routes
@@ -21,6 +22,7 @@ router.route("/login").post(userlogin)
 router.route("/log_out").get(log_out)
 router.route("/user").get(validUser,getUser) 
 router.route("/userUpdate").post(validUser,userUpdate)// self update user details
+
 //router.route("/login/checkUser").post()
 
 //Admins Routes
@@ -38,6 +40,24 @@ app.use(express.json()); //parse json bodies in the request object
 app.use(bodyParser.urlencoded({ extended: true })); // Setup the body parser to handle form submits
 app.use(cors());
 app.use(router); //test later if needed
+
+//Task Routes
+router.route("/createApp").post(createApp)
+router.route("/displayAllApp").get(showAllApp)
+router.route("/displayApp").post(showApp)
+router.route("/editApp").post(editApp)
+router.route("/createPlan").post(createPlan)
+router.route("/displayAllPlan").get(showAllPlan)
+router.route("/displayPlan").post(showPlan)
+router.route("/editPlan").post(editPlan)
+router.route("/createTask").post(createTask)
+router.route("/displayAllTask").get(showAllTask)
+router.route("/displayTask").post(showTask)
+router.route("/editTask").post()
+router.route("/taskPromote").post(promoteTask)
+router.route("/taskDemote").post(demoteTask)
+router.route("/assignTask").get()
+router.route("/addNotes").get()
 
 //App listening on port
 const PORT = process.env.PORT;

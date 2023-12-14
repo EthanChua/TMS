@@ -66,10 +66,12 @@ exports.createUser = async (req, res, next)=> {
           });
         }
         else {
-            res.json({error: 'Password does not meet criteria!'});
+           return res.json({success: false,
+            message: "Password does not meet criteria!"});
         }
     } else {
-      return res.json({error: 'Either Username or Password is missing'})
+      return res.json({success: false,
+          message: "Either Username or Password is missing"})
     }
   } catch (e){return res.json({error: e})};
 };
@@ -171,8 +173,6 @@ exports.toggleStatus= async (req, res, next)=> {
 //to get user info
 exports.getUser = async (req, res, next)=> {
   const username = req.user.username;
-
-
 
   try{
     const query="SELECT username, email, roles FROM accounts WHERE username =?";
