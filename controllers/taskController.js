@@ -2,11 +2,12 @@
 //@NOTE
 //@TODO add error handling to all API
 //@TODO implement add audit trail a) userID b) current State (before & after) c) date & timestamp // to call date time Date()
+//@TODO Date Formatting
 */
 
 const pool = require('../config/database');
 
-//Create App
+//Create App @TODO Date Formatting
 exports.createApp = async (req, res, next)=> {
  const query = "INSERT into application (App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Open, App_permit_toDOList, App_permit_Doing, App_permit_Done, App_permit_Create) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
  const {acronym, description, rnumber, startdate, enddate, permitOpen, permitTODO, permitDoing, permitDone, permitCreate} = req.body;
@@ -30,7 +31,6 @@ exports.createApp = async (req, res, next)=> {
 
     
   } catch (e) {
-    console.log(e, "create application failed")
     return res.status(400).json({
       success: false,
       message: "Application creation failed"
@@ -169,7 +169,7 @@ try{
 }catch (e){return res.status(500).json({success: false, message: e})}
 };
 
-//Create Plan
+//Create Plan @TODO date formatting
 exports.createPlan = async (req, res, next)=> {
   const query = "INSERT into plan (Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_app_Acronym) values (?, ?, ?, ?)";
   const {nameMVP, startdate, enddate, app_Acronym} = req.body; //@Note: when done app_Acronym get from frontend 
@@ -299,7 +299,6 @@ exports.createTask= async(req, res, next)=> {
      const [row, fields] = await pool.query(getRnumber, appAcronym)
      
      taskID = appAcronym + "_" + row[0].App_Rnumber
-     console.log(taskID)
 
      //get date and time format
     let currentDate = new Date()
@@ -320,7 +319,6 @@ exports.createTask= async(req, res, next)=> {
       //to increament R number in application table
       let newRNumber=parseInt(row[0].App_Rnumber)
       newRNumber++
-      console.log(newRNumber, "New R Number")
       let setNewRNumber = "UPDATE application SET App_Rnumber=? WHERE App_Acronym=?"
       const setNewRNumberResult = await pool.query(setNewRNumber, [newRNumber,appAcronym])
 
@@ -330,7 +328,6 @@ exports.createTask= async(req, res, next)=> {
      })
     }
    } catch (e) {
-     console.log(e, "create application failed")
      return res.status(400).json({
        success: false,
        message: e
