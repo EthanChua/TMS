@@ -9,7 +9,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors')
 const { userlogin, createUser, Checkgroup, log_out, userUpdate, userEdit, createGroup, showAllUser, getGroups, getUser, toggleStatus} = require("./controllers/userController");
 const {validUser, authorizedGroups, adminProtect} = require("./controllers/authController");
-const { createApp, showAllApp, showApp, editApp, createPlan, showAllPlan, showPlan, editPlan, createTask, showAllTask, showTask, promoteTask, demoteTask } = require('./controllers/taskController');
+const { createApp, showAllApp, showApp, editApp, createPlan, showAllPlan, showPlan, editPlan, createTask, showAllTask, showTask, promoteTask, demoteTask, editTask } = require('./controllers/taskController');
 const dotenv = require("dotenv").config();
 
 //Routes
@@ -53,7 +53,7 @@ router.route("/editPlan").post(editPlan)
 router.route("/createTask").post(createTask)
 router.route("/displayAllTask").get(showAllTask)
 router.route("/displayTask").post(showTask)
-router.route("/editTask").post()
+router.route("/editTask").post(editTask)
 router.route("/taskPromote").post(promoteTask)
 router.route("/taskDemote").post(demoteTask)
 router.route("/assignTask").get()

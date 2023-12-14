@@ -375,58 +375,72 @@ exports.showTask= async(req, res, next)=> {
   } catch (e) {return res.status(500).json({success: false, message: e})}
 };
 
-//EditTask
+//EditTask: either Add or change plan or add Notes without promoting or demoting
 exports.editTask=async(req,res,next)=> {
-  let querystr ="UPDATE task SET "
-  let values =[]
-  
-  //Build query string for update
-  //edit Task description
-  if(req.body.description){
-    querystr += "Task_description =?, "
-    values.push(req.body.description)
-  } else if (req.body.description === undefined) {
-    querystr += "Task_description =?, "
-    values.push(null)
-  }
+const {username, taskID} = req.body
+let planChanged= false, noteAdded= false, querystr ="UPDATE task SET ", values =[], auditMessage
+
   //edit Task Plan
   if(req.body.taskPlan){
     querystr += "Task_plan =?, "
     values.push(req.body.taskPlan)
+    planChanged= true
   } else if (req.body.taskPlan === undefined) {
     querystr += "Task_plan =?, "
     values.push(null)
   }
-  //edit Task Owner
-  if(req.body.taskOwner){
-    querystr += "Task_owner =?, "
-    values.push(req.body.taskOwner)
-  } else if (req.body.Owner=== undefined) {
-    querystr += "Task_owner =?, "
-    values.push(null)
-  }
+
+  if(req.body.userNote){
+    querystr += "Task_notes = CONCAT(?, Task_notes), "
+    values.push("Note: "+ req.body.userNote + "\n")
+    noteAdded= true
+  } 
+
+
+  //edit Task Owner inaccordance with last touch policy
+  querystr += "Task_owner =?, "
+  values.push(username)
   
   querystr = querystr.slice(0, -2)
   querystr += " WHERE Task_id = ?"
-  values.push(req.body.taskID)
+  values.push(taskID)
   
   try{
     const result = await pool.query(querystr, values)
   
-    if(result[0].affectedRows === 0){
-      return res.status(500).json({
-        success: false,
-        message: "Task update failed"
+    if(result[0].affectedRows>0){
+    //get Date Time format
+    let currentDate = new Date()
+    let day = currentDate.getDate()
+    let month= currentDate.getMonth() +1
+    let year= currentDate.getFullYear()
+    let hours= currentDate.getHours()
+    let minutes= currentDate.getMinutes()
+    auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
+    
+    if (planChanged && noteAdded){
+      auditMessage = `${username} made plan changes and added a note on ${auditDateTime} \n`
+    } else if (noteAdded){
+      auditMessage = `${username} added a note on ${auditDateTime} \n `
+    } else if (planChanged){
+      auditMessage = `${username} made plan changes on ${auditDateTime} \n `
+    }
+
+    const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
+    const auditResult = pool.query(auditInsert, [auditMessage, taskID])
+    return res.status(200).json({
+      success: true,
+      message: auditMessage
       })
     }
-    res.status(200).json({
-      success: true,
-      message:"Task details updated"
+    return res.status(500).json({
+      success: false,
+      message: "Task update failed"
     })
   }catch (e){return res.status(500).json({success: false, message: e})}
 };
 
-//Promote @TODO: send audit trail to notes, get username from cookie
+//Promote @TODO: get username from cookie
 exports.promoteTask = async(req, res, next) => { 
   const {taskID, username} = req.body
   let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
@@ -436,7 +450,7 @@ exports.promoteTask = async(req, res, next) => {
     let taskState = rows[0].Task_state
     let newtaskState, sendEmail= false
 
-//Task State, 1: Open 2: ToDo 3: Doing 4: Done 5: Closed
+//Task States: "Open"->"ToDo"->"Doing"->"Done"->"Closed"
     switch (taskState) {
       case "Open":
         newtaskState = "To Do"
@@ -470,6 +484,10 @@ exports.promoteTask = async(req, res, next) => {
 
     if(result[0].affectedRows>0) {
     let auditMessage = username + " promoted " + taskState + " to " + newtaskState + " on " + auditDateTime + " \n " //@TODO get user from token
+    //Attach Note if exist
+      if(req.body.userNote !=null && req.body.userNote != ""){
+        auditMessage = auditMessage += "Note: "+ req.body.userNote + " \n "
+      }
     const auditUpdate = `UPDATE task SET Task_notes = CONCAT(?, Task_notes) WHERE Task_id=?`
     const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, taskID])
       if(sendEmail){
@@ -485,7 +503,7 @@ exports.promoteTask = async(req, res, next) => {
   
 };
 
-//Demote @TODO: send audit trail to notes, get username from cookie
+//Demote @TODO: get username from cookie
 exports.demoteTask = async(req, res, next) => {
   const {taskID, username} = req.body
   let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
@@ -494,8 +512,7 @@ exports.demoteTask = async(req, res, next) => {
     const [rows, fields]= await pool.query(selectTask, taskID)
     let taskState = rows[0].Task_state
     let newtaskState
-//Task State, 1: Open 2: ToDo 3: Doing 4: Done 5: Closed
-
+//Task States: "Closed"->"Done"->"Doing"->"To Do"->"Open"
     switch (taskState) {
       case "Done":
         newtaskState = "Doing"
@@ -525,7 +542,11 @@ exports.demoteTask = async(req, res, next) => {
     auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
 
     if(result[0].affectedRows>0) {
-    let auditMessage = username + " demoted " + taskState + " to " + newtaskState + " on " + auditDateTime + "\n" //@TODO get user from token
+    let auditMessage = username + " demoted " + taskState + " to " + newtaskState + " on " + auditDateTime + "\n " //@TODO get user from token
+      //Attach Note if exist
+      if(req.body.userNote !=null && req.body.userNote != ""){
+        auditMessage = auditMessage += "Note: "+ req.body.userNote + " \n "
+      }
     const auditUpdate = `UPDATE task SET Task_notes = CONCAT(?, Task_notes) WHERE Task_id=?`
     const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, taskID])
     return res.status(200).json({
@@ -536,11 +557,6 @@ exports.demoteTask = async(req, res, next) => {
 } catch (e) {return res.status(400).json({success: false, message: e})}
   
   
-};
-
-
-async function AddNotes(username, taskName, ) { //As a function call everytime task 
-
 };
 
 //Assign Task
