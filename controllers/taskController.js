@@ -1,11 +1,12 @@
 /*
 //@NOTE
 //@TODO add error handling to all API
-//@TODO implement add audit trail a) userID b) current State (before & after) c) date & timestamp // to call date time Date()
+//@TODO implement add audit trail a) userID b) current State (before & after) c) date & timestamp
 //@TODO Date Formatting
 */
 
-const pool = require('../config/database');
+const pool = require('../config/database')
+const nodemailer=require('nodemailer')
 
 //Create App @TODO Date Formatting
 exports.createApp = async (req, res, next)=> {
@@ -76,7 +77,7 @@ return res.status(200).json({
 } catch (e) {return res.status(500).json({success: false, message: e})}
 };
 
-//Edit Applications //change where we get acronym from
+//Edit Applications @@ Change where we get acronym from
 exports.editApp= async (req, res, next) => {
 let querystr ="UPDATE application SET "
 let values =[]
@@ -297,7 +298,7 @@ exports.createTask= async(req, res, next)=> {
      //Get App_Acronym and R Number to get Task ID
      let getRnumber = "SELECT * FROM application WHERE App_Acronym =?"
      const [row, fields] = await pool.query(getRnumber, appAcronym)
-     
+
      taskID = appAcronym + "_" + row[0].App_Rnumber
 
      //get date and time format
@@ -372,7 +373,7 @@ exports.showTask= async(req, res, next)=> {
   } catch (e) {return res.status(500).json({success: false, message: e})}
 };
 
-//EditTask: either Add or change plan or add Notes without promoting or demoting
+//EditTask: either Assign plan or add Notes without promoting or demoting
 exports.editTask=async(req,res,next)=> {
 const {username, taskID} = req.body
 let planChanged= false, noteAdded= false, querystr ="UPDATE task SET ", values =[], auditMessage
@@ -414,13 +415,19 @@ let planChanged= false, noteAdded= false, querystr ="UPDATE task SET ", values =
     let hours= currentDate.getHours()
     let minutes= currentDate.getMinutes()
     auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
+
+    //get task state
+    const getTaskStateQ = "SELECT * FROM task WHERE Task_id =? "
+    const [row, fields]= await pool.query(getTaskStateQ, taskID)
+
+    const taskState = row[0].Task_state
     
     if (planChanged && noteAdded){
-      auditMessage = `${username} made plan changes and added a note on ${auditDateTime} \n`
+      auditMessage = `${username} made plan changes and added a note on ${auditDateTime}, task state was ${taskState} \n`
     } else if (noteAdded){
-      auditMessage = `${username} added a note on ${auditDateTime} \n `
+      auditMessage = `${username} added a note on ${auditDateTime}, task state was ${taskState} \n `
     } else if (planChanged){
-      auditMessage = `${username} made plan changes on ${auditDateTime} \n `
+      auditMessage = `${username} made plan changes on ${auditDateTime}, task state was ${taskState} \n `
     }
 
     const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
@@ -443,8 +450,8 @@ exports.promoteTask = async(req, res, next) => {
   let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
 
   try{
-    const [rows, fields]= await pool.query(selectTask, taskID)
-    let taskState = rows[0].Task_state
+    const [row, fields]= await pool.query(selectTask, taskID)
+    let taskState = row[0].Task_state
     let newtaskState, sendEmail= false
 
 //Task States: "Open"->"ToDo"->"Doing"->"Done"->"Closed"
@@ -487,14 +494,43 @@ exports.promoteTask = async(req, res, next) => {
       }
     const auditUpdate = `UPDATE task SET Task_notes = CONCAT(?, Task_notes) WHERE Task_id=?`
     const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, taskID])
+    sendEmail=false //@TODO Remove when presenting
       if(sendEmail){
         console.log(auditMessage, "Send Email to project lead")
-      }
+        
+        let transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: process.env.SMTP_PORT,
+          auth: {
+              user : process.env.SMTP_EMAIL,
+              pass : process.env.SMTP_PASSWORD
+          }
+        })
+
+        let message ={
+          from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_FROM_EMAIL}>`,
+          to: process.env.SMTP_TO_EMAIL,
+          subject: `Task Done`,
+          text: `${taskID} promoted to Done`
+        };
+      
+      
+      transporter.sendMail(message, function(error, info) {
+        if (error){
+          console.log(error)
+        } else {
+          console.log("Email Sent to Project Lead")
+        }
+      });
+
+    }
+
     return res.status(200).json({
       success: true,
       message: auditMessage
     })
   }
+  
 } catch (e) {return res.status(400).json({success: false, message: e})}
   
   
@@ -506,8 +542,8 @@ exports.demoteTask = async(req, res, next) => {
   let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
 
   try{
-    const [rows, fields]= await pool.query(selectTask, taskID)
-    let taskState = rows[0].Task_state
+    const [row, fields]= await pool.query(selectTask, taskID)
+    let taskState = row[0].Task_state
     let newtaskState
 //Task States: "Closed"->"Done"->"Doing"->"To Do"->"Open"
     switch (taskState) {
@@ -556,14 +592,5 @@ exports.demoteTask = async(req, res, next) => {
   
 };
 
-//Assign Task
-//Send email
-
-/*
-exports.functionName = async (req, res, next)=> {
-
-  try {} catch (e) {}
-};
-*/
 
 

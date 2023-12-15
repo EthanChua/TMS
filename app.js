@@ -56,8 +56,6 @@ router.route("/displayTask").post(showTask)
 router.route("/editTask").post(editTask)
 router.route("/taskPromote").post(promoteTask)
 router.route("/taskDemote").post(demoteTask)
-router.route("/assignTask").get()
-router.route("/addNotes").get()
 
 //App listening on port
 const PORT = process.env.PORT;
