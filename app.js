@@ -7,7 +7,7 @@ const router= express.Router();
 const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors')
-const { userlogin, createUser, Checkgroup, log_out, userUpdate, userEdit, createGroup, showAllUser, getGroups, getUser, toggleStatus} = require("./controllers/userController");
+const { userlogin, createUser, checkingGroup, log_out, userUpdate, userEdit, createGroup, showAllUser, getGroups, getUser, toggleStatus} = require("./controllers/userController");
 const {validUser, authorizedGroups, adminProtect} = require("./controllers/authController");
 const { createApp, showAllApp, showApp, editApp, createPlan, showAllPlan, showPlan, editPlan, createTask, showAllTask, showTask, promoteTask, demoteTask, editTask } = require('./controllers/taskController');
 const dotenv = require("dotenv").config();
@@ -15,15 +15,13 @@ const dotenv = require("dotenv").config();
 //Routes
 
 //Access Control Route
-router.route("/Checkgroup").post(validUser, Checkgroup) //check user have access rights
+router.route("/Checkgroup").post(validUser, checkingGroup) //check user have access rights
 
 //All user route
 router.route("/login").post(userlogin)
 router.route("/log_out").get(log_out)
 router.route("/user").get(validUser,getUser) 
 router.route("/userUpdate").post(validUser,userUpdate)// self update user details
-
-//router.route("/login/checkUser").post()
 
 //Admins Routes
 router.route("/createUser").post(validUser, authorizedGroups("admin"), createUser) //admin create new users
@@ -39,7 +37,7 @@ router.route("/toggleStatus").post(validUser, authorizedGroups("admin"), toggleS
 app.use(express.json()); //parse json bodies in the request object
 app.use(bodyParser.urlencoded({ extended: true })); // Setup the body parser to handle form submits
 app.use(cors());
-app.use(router); //test later if needed
+app.use(router); 
 
 //Task Routes
 router.route("/createApp").post(createApp)

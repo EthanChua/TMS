@@ -325,21 +325,22 @@ exports.getGroups = async (req, res, next) => {
 };
 
 //Checkgroup API @TOCHECK
-exports.Checkgroup = async (req, res, next)=> {
+exports.checkingGroup = async (req, res, next)=> {
   try{
-    const authorized = await Checkgroup(req.user.username, req.body.usergroup)
-    return res.json({
-      usergroup: authorized
-    })
-  } catch (e) { return res.json({error: e}) }
-};
+    const result = await Checkgroup(req.user, req.body.usergroup)
 
+    return res.status(200).json({
+        result: result
+    })
+    } catch (e) { return res.status(500).json({success: false, message: e}) }
+   
+};
 
 //functions @TODO: solve admin is in a all usergroup issue
 async function Checkgroup(userid, groupname) {
-  
+
   const query=`SELECT roles FROM accounts WHERE username = ? AND roles LIKE ?`;
-  const result = await pool.query(query, [userid, `%${groupname}%`]);
+  const result = await pool.query(query, [userid.username, `%${groupname}%`]);
 
   if(result[0][0]){
     return true;
