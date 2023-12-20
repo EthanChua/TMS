@@ -8,8 +8,8 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors')
 const { userlogin, createUser, checkingGroup, log_out, userUpdate, userEdit, createGroup, showAllUser, getGroups, getUser, toggleStatus} = require("./controllers/userController");
-const {validUser, authorizedGroups, adminProtect} = require("./controllers/authController");
-const { createApp, showAllApp, showApp, editApp, createPlan, showAllPlan, showPlan, editPlan, createTask, showAllTask, showTask, promoteTask, demoteTask, editTask } = require('./controllers/taskController');
+const {validUser, authorizedGroups, adminProtect, getTaskAppInfo, userPermits} = require("./controllers/authController");
+const { createApp, showAllApp, showApp, editApp, createPlan, showAllPlan, showPlan, editPlan, createTask, showAllTask, showTask, promoteTask, demoteTask, editTask, assignPlan } = require('./controllers/taskController');
 const dotenv = require("dotenv").config();
 
 //Routes
@@ -27,7 +27,7 @@ router.route("/userUpdate").post(validUser,userUpdate)// self update user detail
 router.route("/createUser").post(validUser, authorizedGroups("admin"), createUser) //admin create new users
 router.route("/creategroup").post(validUser, authorizedGroups("admin"), createGroup) //create groups
 router.route("/showUsers").get(validUser, authorizedGroups("admin"), showAllUser) //show all users
-router.route("/showGroups").get(validUser, authorizedGroups("admin"),getGroups) //show all groups
+router.route("/showGroups").get(validUser, authorizedGroups("admin", "PL", "pl"), getGroups) //show all groups
 
 //Protected Routes
 router.route("/editUsers").post(validUser, authorizedGroups("admin"), userEdit) // admin edit users
@@ -40,18 +40,19 @@ app.use(cors());
 app.use(router); 
 
 //Task Routes
-router.route("/createApp").post(createApp)
-router.route("/displayAllApp").get(showAllApp)
-router.route("/displayApp").post(showApp)
-router.route("/editApp").post(editApp)
-router.route("/createPlan").post(createPlan)
-router.route("/displayAllPlan").get(showAllPlan)
+router.route("/createApp").post(validUser, authorizedGroups("PL","pl"), createApp)
+router.route("/displayAllApp").get(validUser, showAllApp)
+router.route("/displayApp/:App_Acronym").post(validUser, showApp)
+router.route("/editApp").post(validUser, authorizedGroups("PL", "pl"), editApp)
+router.route("/createPlan").post(validUser, authorizedGroups("PM", "pm"), createPlan)
+router.route("/displayAllPlan/:App_Acronym").get(validUser,showAllPlan)
 router.route("/displayPlan").post(showPlan)
-router.route("/editPlan").post(editPlan)
-router.route("/createTask").post(createTask)
-router.route("/displayAllTask").get(showAllTask)
-router.route("/displayTask").post(showTask)
-router.route("/editTask").post(editTask)
+router.route("/editPlan").post(validUser, authorizedGroups("PM", "pm"), editPlan)
+router.route("/createTask").post(validUser, getTaskAppInfo, userPermits, createTask)
+router.route("/displayAllTask/:App_Acronym").post(validUser, showAllTask)
+router.route("/displayTask/:Task_id").get(validUser, showTask)
+router.route("/editTask").post(validUser, getTaskAppInfo, editTask) //Add Notes
+router.route("/assignPlan").post(validUser, getTaskAppInfo, userPermits, assignPlan) //Assign Plan
 router.route("/taskPromote").post(promoteTask)
 router.route("/taskDemote").post(demoteTask)
 

@@ -148,7 +148,6 @@ exports.toggleStatus= async (req, res, next)=> {
   const {username, isActive} =req.body;
   const query= `UPDATE accounts SET isActive = ? WHERE username =?`;
   let result
-  console.log(isActive)
 
   try{
 
@@ -315,6 +314,7 @@ exports.getGroups = async (req, res, next) => {
           success: true,
           message:"retrieved group names",
           data: result[0]
+          
         });
       } catch (e) {
       return res.status(500).json({
@@ -328,7 +328,7 @@ exports.getGroups = async (req, res, next) => {
 exports.checkingGroup = async (req, res, next)=> {
   try{
     const result = await Checkgroup(req.user, req.body.usergroup)
-
+ 
     return res.status(200).json({
         result: result
     })
@@ -343,6 +343,7 @@ async function Checkgroup(userid, groupname) {
   const result = await pool.query(query, [userid.username, `%${groupname}%`]);
 
   if(result[0][0]){
+
     return true;
   } else {
     return false;

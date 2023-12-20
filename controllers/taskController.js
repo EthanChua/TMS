@@ -11,10 +11,10 @@ const nodemailer=require('nodemailer')
 //Create App @TODO Date Formatting
 exports.createApp = async (req, res, next)=> {
  const query = "INSERT into application (App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Open, App_permit_toDOList, App_permit_Doing, App_permit_Done, App_permit_Create) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
- const {acronym, description, rnumber, startdate, enddate, permitOpen, permitTODO, permitDoing, permitDone, permitCreate} = req.body;
+ const {App_Acronym, App_Description, App_Rnumber, App_startdate, App_enddate, App_permit_Open, App_permit_tODoList, App_permit_Doing, App_permit_Done, App_permit_Create} = req.body;
   try {
 
-    if(!acronym || !rnumber)
+    if(!App_Acronym || !App_Rnumber)
     {
       return res.status(400).json({
         success: false,
@@ -22,7 +22,7 @@ exports.createApp = async (req, res, next)=> {
       })
     }
 
-    result = await pool.query(query, [acronym, description, rnumber, startdate, enddate, permitOpen, permitTODO, permitDoing, permitDone, permitCreate])
+    result = await pool.query(query, [App_Acronym, App_Description, App_Rnumber, App_startdate, App_enddate, App_permit_Open, App_permit_tODoList, App_permit_Doing, App_permit_Done, App_permit_Create])
 
     if(result[0].affectedRows>0)
     return res.status(200).json({
@@ -56,11 +56,12 @@ exports.showAllApp= async (req, res, next) => {
 
 //Display Single App info
 exports.showApp= async (req, res, next) => {
-const {acronym} = req.body
+const App_Acronym = req.params.App_Acronym;
 
 try{
   const query="SELECT * FROM application WHERE App_Acronym=?"
-  const result= await pool.query(query, [acronym])
+  const result= await pool.query(query, App_Acronym)
+
 
   if(result[0].length===0)
   {
@@ -84,75 +85,75 @@ let values =[]
 
 //Build query string for update
 //edit description
-if(req.body.description){
+if(req.body.App_Description){
   querystr += "App_Description =?, "
-  values.push(req.body.description)
-} else if (req.body.description === undefined) {
+  values.push(req.body.App_Description)
+} else if (!req.body.App_Description) {
   querystr += "App_Description =?, "
   values.push(null)
 }
 //edit startdate
-if(req.body.startdate){
+if(req.body.App_startDate){
   querystr += "App_startDate =?, "
-  values.push(req.body.startdate)
-} else if (req.body.startdate === undefined) {
+  values.push(req.body.App_startDate)
+} else if (!req.body.App_startDate) {
   querystr += "App_startDate =?, "
   values.push(null)
 }
 //edit enddate
-if(req.body.enddate){
+if(req.body.App_endDate){
   querystr += "App_endDate =?, "
-  values.push(req.body.enddate)
-} else if (req.body.enddate=== undefined) {
+  values.push(req.body.App_endDate)
+} else if (!req.body.App_endDate) {
   querystr += "App_endDate =?, "
   values.push(null)
 }
 //edit permit Open
-if(req.body.permitOpen){
+if(req.body.App_permit_Open){
   querystr += "App_permit_Open =?, "
-  values.push(req.body.permitOpen)
-} else if (req.body.permitOpen === undefined) {
+  values.push(req.body.App_permit_Open)
+} else if (!req.body.App_permit_Open) {
   querystr += "App_permit_Open =?, "
   values.push(null)
 }
 
 //edit permit todo
-if(req.body.permitTODO){
+if(req.body.App_permit_toDoList){
   querystr += "App_permit_toDoList =?, "
-  values.push(req.body.permitTODO)
-} else if (req.body.permitTODO === undefined) {
+  values.push(req.body.App_permit_toDoList)
+} else if (!req.body.App_permit_toDoList) {
   querystr += "App_permit_toDoList =?, "
   values.push(null)
 }
 
 //edit permit doing
-if(req.body.permitDoing){
+if(req.body.App_permit_Doing){
   querystr += "App_permit_Doing =?, "
-  values.push(req.body.permitDoing)
-} else if (req.body.permitDoing === undefined) {
+  values.push(req.body.App_permit_Doing)
+} else if (!req.body.App_permit_Doing) {
   querystr += "App_permit_Doing =?, "
   values.push(null)
 }
 //edit permit done
-if(req.body.permitDone){
+if(req.body.App_permit_Done){
   querystr += "App_permit_Done =?, "
-  values.push(req.body.permitDone)
-} else if (req.body.permitDone === undefined) {
+  values.push(req.body.App_permit_Done)
+} else if (!req.body.App_permit_Done) {
   querystr += "App_permit_Done =?, "
   values.push(null)
 }
 //edit permit create
-if(req.body.permitCreate){
+if(req.body.App_permit_Create){
   querystr += "App_permit_Create =?, "
-  values.push(req.body.permitCreate)
-} else if (req.body.permitCreate === undefined) {
+  values.push(req.body.App_permit_Create)
+} else if (!req.body.App_permit_Create) {
   querystr += "App_permit_Create =?, "
   values.push(null)
 }
 
 querystr = querystr.slice(0, -2)
 querystr += " WHERE App_Acronym = ?"
-values.push(req.body.acronym)
+values.push(req.body.App_Acronym)
 
 try{
   const result = await pool.query(querystr, values)
@@ -173,37 +174,47 @@ try{
 //Create Plan @TODO date formatting
 exports.createPlan = async (req, res, next)=> {
   const query = "INSERT into plan (Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_app_Acronym) values (?, ?, ?, ?)";
-  const {nameMVP, startdate, enddate, app_Acronym} = req.body; //@Note: when done app_Acronym get from frontend 
-   try {
+  const {Plan_MVP_name, Plan_startDate=null, Plan_endDate=null, Plan_app_Acronym} = req.body; //@Note: when done app_Acronym get from frontend 
  
-     if(!nameMVP)
+     if(!Plan_MVP_name)
      {
        return res.status(400).json({
          success: false,
-         message:"MVP Name is Missing"
+         message:"Plan Name is Missing"
        })
      }
- 
-     result = await pool.query(query, [nameMVP, startdate, enddate, app_Acronym])
+
+     if (!Plan_app_Acronym) {
+      return res.status(400).json({
+        success : false,
+        message : 'App Acronym must be provided',
+      })
+    }
+
+    try{
+     result = await pool.query(query, [Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_app_Acronym])
  
      if(result[0].affectedRows>0)
      return res.status(200).json({
        success: true,
-       message: "Plan Created!"
+       message: `Plan '${Plan_MVP_name}'  Created!`
      })
  
-     
    } catch (e) {
-     return res.status(400).json({success: false, message:e})
+    if(e.errno ===1062){
+     return res.status(400).json({success: false, message:`Plan name exist, please rename`})
+    }
    }
+  
 };
 
 //Display all Plan in list
 exports.showAllPlan= async (req, res, next)=> {
-  const query ="SELECT * FROM plan"
+  const App_Acronym = req.params.App_Acronym
+  const query ="SELECT * FROM plan WHERE `Plan_app_Acronym` = ?"
 
   try{
-      const result = await pool.query(query)
+      const result = await pool.query(query, App_Acronym)
 
       return res.status(200).json({success:true, message:"Plans loaded", data: result[0]})
 
@@ -240,29 +251,39 @@ exports.showPlan= async (req, res, next)=> {
 exports.editPlan= async(req, res, next)=> {
   let querystr ="UPDATE plan SET "
   let values =[]
-  
+  let {Plan_MVP_name, Plan_app_Acronym, Plan_startDate, Plan_endDate} = req.body
+
+  if (!Plan_MVP_name || !Plan_app_Acronym) {
+   return res.status(400).json({
+      success : false,
+      message : 'Plan Name and App Acronym must be provided',
+    })
+  }
+
+
   //Build query string for update
   //edit Plan Start date
-  if(req.body.startdate){
+  if(Plan_startDate){
     querystr += "Plan_startDate =?, "
-    values.push(req.body.startdate)
-  } else if (req.body.startdate === undefined) {
+    values.push(Plan_startDate)
+  } else if (!Plan_startDate) {
     querystr += "Plan_startDate =?, "
     values.push(null)
   }
+
   //edit Plan End date
-  if(req.body.enddate){
+  if(Plan_endDate){
     querystr += "Plan_endDate =?, "
-    values.push(req.body.enddate)
-  } else if (req.body.enddate === undefined) {
+    values.push(Plan_endDate)
+  } else if (!Plan_endDate) {
     querystr += "Plan_endDate =?, "
     values.push(null)
   }
 
   //select the row
   querystr = querystr.slice(0, -2)
-  querystr += " WHERE Plan_MVP_name = ?"
-  values.push(req.body.nameMVP)
+  querystr += " WHERE Plan_MVP_name = ? AND Plan_app_Acronym = ?"
+  values.push(Plan_MVP_name, Plan_app_Acronym)
 
 try{
   const result = await pool.query(querystr, values)
@@ -275,31 +296,52 @@ try{
   }
   res.status(200).json({
     success: true,
-    message:"Plan details updated"
+    message:`Plan ${Plan_MVP_name} details updated`
   })
-}catch (e){return res.status(500).json({success: false, message: e})}
+}catch (e){ 
+  console.log(e) 
+  return res.status(500).json({success: false, message: e})}
 };
 
 //Create Task @TODO: internal logic to get values
 exports.createTask= async(req, res, next)=> {
   const query = "INSERT into task (Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_Acronym, Task_state, Task_creator, Task_owner, Task_createDate) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-  const {taskName, taskDescription, taskPlan, taskCreator, appAcronym} = req.body; //@TODO: get App_Acronym from frontend, taskCreator from session user
-  let taskAppAcronym= appAcronym, taskState="Open", taskID, taskCreateDate, taskOwner=taskCreator
- 
+  let {Task_name, Task_description=null, Task_app_Acronym} = req.body; //@TODO: get App_Acronym from frontend, taskCreator from session user
+  let taskState="Open", taskID, taskCreateDate, username=req.user.username, taskPlan=null;
+  
+
    try {
-     if(!taskName || !taskCreator)
+     if(!Task_name)
      {
        return res.status(400).json({
          success: false,
-         message:"One or more of these fields are missing: Task Name, Task Creator"
+         message:"Task Name is missing"
        })
      }
 
-     //Get App_Acronym and R Number to get Task ID
-     let getRnumber = "SELECT * FROM application WHERE App_Acronym =?"
-     const [row, fields] = await pool.query(getRnumber, appAcronym)
+     if (!Task_app_Acronym) {
+      return res.status(400).json({
+        success : false,
+        message : 'App Acronym must be provided',
+      })  
+    }
 
-     taskID = appAcronym + "_" + row[0].App_Rnumber
+     //use App_Acronym and R Number to get Task ID
+     let getRnumber = "SELECT * FROM application WHERE App_Acronym =?"
+     const [row, fields] = await pool.query(getRnumber, Task_app_Acronym)
+
+     if(row[0]){
+     taskID = Task_app_Acronym + "_" + row[0].App_Rnumber
+     } else {
+      res.status(400).json({
+        success: false,
+        message: "Application not found"
+     })
+    }
+
+    //get task Owner and Creator
+    let Task_creator = username
+    let Task_owner = username
 
      //get date and time format
     let currentDate = new Date()
@@ -313,15 +355,15 @@ exports.createTask= async(req, res, next)=> {
      auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
      
      //audit message into Task Note
-     let auditMessage = "Task " + taskID + " created by " + taskCreator + " as Open on " + auditDateTime //Task creator to get from session
-     result = await pool.query(query, [taskName, taskDescription, auditMessage, taskID, taskPlan, taskAppAcronym, taskState, taskCreator, taskOwner, taskCreateDate])
+     let auditMessage = "Task " + taskID + " created by " + Task_creator + " as Open on " + auditDateTime 
+     result = await pool.query(query, [Task_name, Task_description, auditMessage, taskID, taskPlan, Task_app_Acronym, taskState, Task_creator, Task_owner, taskCreateDate])
  
      if(result[0].affectedRows>0) {
       //to increament R number in application table
       let newRNumber=parseInt(row[0].App_Rnumber)
       newRNumber++
       let setNewRNumber = "UPDATE application SET App_Rnumber=? WHERE App_Acronym=?"
-      const setNewRNumberResult = await pool.query(setNewRNumber, [newRNumber,appAcronym])
+      const setNewRNumberResult = await pool.query(setNewRNumber, [newRNumber,Task_app_Acronym])
 
       return res.status(200).json({
        success: true,
@@ -329,6 +371,7 @@ exports.createTask= async(req, res, next)=> {
      })
     }
    } catch (e) {
+    console.log(e)
      return res.status(400).json({
        success: false,
        message: e
@@ -338,10 +381,11 @@ exports.createTask= async(req, res, next)=> {
 
 //Show All Task
 exports.showAllTask= async(req,res, next)=> {
-  const query ="SELECT * FROM task"
+  const App_Acronym = req.params.App_Acronym
+  const query ="SELECT * FROM task WHERE `Task_app_Acronym` = ?"
 
   try{
-      const result = await pool.query(query)
+      const result = await pool.query(query, App_Acronym)
 
       return res.status(200).json({success:true, message:"Tasks loaded", data: result[0]})
 
@@ -352,11 +396,16 @@ exports.showAllTask= async(req,res, next)=> {
 
 //Show Task Details
 exports.showTask= async(req, res, next)=> {
-  const {taskID} = req.body
+  const Task_id = req.params.Task_id
+
+  if (!Task_id) {
+   return res.status(400).json({success : false, message : 'Task ID is missing',
+    })
+  }
 
   try{
     const query="SELECT * FROM task WHERE Task_id=?"
-    const result= await pool.query(query, [taskID])
+    const result= await pool.query(query, Task_id)
   
     if(result[0].length===0)
     {
@@ -368,41 +417,92 @@ exports.showTask= async(req, res, next)=> {
   return res.status(200).json({
     success:true,
     message:"Task found",
-    data: result[0][0]
+    data: result[0] //maybe remove array
   })
-  } catch (e) {return res.status(500).json({success: false, message: e})}
+  } catch (e) {
+    console.log(e) 
+    return res.status(500).json({success: false, message: e})}
 };
 
-//EditTask: either Assign plan or add Notes without promoting or demoting
-exports.editTask=async(req,res,next)=> {
-const {username, taskID} = req.body
-let planChanged= false, noteAdded= false, querystr ="UPDATE task SET ", values =[], auditMessage
+//Assign Plan
+exports.assignPlan= async(req, res, next)=> {
+const username=req.user.username
+const Task_id = req.body.Task_id
+let querystr ="UPDATE task SET ", values =[], auditMessage
 
-  //edit Task Plan
-  if(req.body.taskPlan){
+  if(req.body.Task_plan){
     querystr += "Task_plan =?, "
-    values.push(req.body.taskPlan)
-    planChanged= true
-  } else if (req.body.taskPlan === undefined) {
+    values.push(req.body.Task_plan)
+  } else if (!req.body.Task_plan) {
     querystr += "Task_plan =?, "
     values.push(null)
   }
 
-  if(req.body.userNote){
+  querystr += "Task_owner =?, "
+  values.push(username)
+  
+  querystr = querystr.slice(0, -2)
+  querystr += " WHERE Task_id = ?"
+  values.push(Task_id)
+
+  try{
+    const result = await pool.query(querystr, values)
+    if(result[0].affectedRows>0){
+      //get Date Time format
+      let currentDate = new Date()
+      let day = currentDate.getDate()
+      let month= currentDate.getMonth() +1
+      let year= currentDate.getFullYear()
+      let hours= currentDate.getHours()
+      let minutes= currentDate.getMinutes()
+      auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
+      
+      //get task state
+      const getTaskStateQ = "SELECT * FROM task WHERE Task_id =? "
+      const [row, fields]= await pool.query(getTaskStateQ, Task_id)
+      const taskState = row[0].Task_state
+
+      auditMessage = `${username} assigned a plan to ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
+      const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
+      const auditResult = pool.query(auditInsert, [auditMessage, Task_id])
+      
+      return res.status(200).json({
+      success: true,
+      message: auditMessage
+      })
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Task update failed"
+    })
+
+    
+  } catch (e) {
+    console.log(e)
+    return res.status(500).json({success: false, message: e})}
+
+}
+
+
+//EditTask:Add Notes without promoting or demoting
+exports.editTask=async(req,res,next)=> {
+const username= req.user.username
+const Task_id= req.body.Task_id
+let noteAdded= false, querystr ="UPDATE task SET ", values =[], auditMessage
+
+  if(req.body.New_notes){
     querystr += "Task_notes = CONCAT(?, Task_notes), "
-    values.push("Note: "+ req.body.userNote + "\n")
+    values.push("Note: "+ req.body.New_notes + "\n")
     noteAdded= true
   } 
-
-
   //edit Task Owner inaccordance with last touch policy
   querystr += "Task_owner =?, "
   values.push(username)
   
   querystr = querystr.slice(0, -2)
   querystr += " WHERE Task_id = ?"
-  values.push(taskID)
-  
+  values.push(Task_id)
   try{
     const result = await pool.query(querystr, values)
   
@@ -418,25 +518,20 @@ let planChanged= false, noteAdded= false, querystr ="UPDATE task SET ", values =
 
     //get task state
     const getTaskStateQ = "SELECT * FROM task WHERE Task_id =? "
-    const [row, fields]= await pool.query(getTaskStateQ, taskID)
+    const [row, fields]= await pool.query(getTaskStateQ, Task_id)
 
     const taskState = row[0].Task_state
-    
-    if (planChanged && noteAdded){
-      auditMessage = `${username} made plan changes and added a note on ${auditDateTime}, task state was ${taskState} \n`
-    } else if (noteAdded){
-      auditMessage = `${username} added a note on ${auditDateTime}, task state was ${taskState} \n `
-    } else if (planChanged){
-      auditMessage = `${username} made plan changes on ${auditDateTime}, task state was ${taskState} \n `
-    }
+
+    auditMessage = `${username} added a note on ${auditDateTime}, task state was ${taskState} \n `
 
     const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
-    const auditResult = pool.query(auditInsert, [auditMessage, taskID])
+    const auditResult = pool.query(auditInsert, [auditMessage, Task_id])
     return res.status(200).json({
       success: true,
       message: auditMessage
       })
     }
+
     return res.status(500).json({
       success: false,
       message: "Task update failed"
