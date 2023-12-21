@@ -71,10 +71,9 @@ let permittedGroup;
 
 const task =req.task;
 
-console.log(req.app)
 
 if(task) {
-    switch (task.Task_State) {
+    switch (task.Task_state) {
       case "Open":
         permittedGroup = req.app.App_permit_Open;
         break;
@@ -97,7 +96,7 @@ if(task) {
     
         res.status(403).json({
             success : false,
-            message : `Error: User '${req.user.username}' is not authorised`,
+            message : `User '${req.user.username}' is not authorised`,
         })
         return;
     } else {
@@ -143,12 +142,12 @@ exports.getTaskAppInfo = async (req, res, next) => {
         req.app = getApp[0][0];
     }
 } catch(e) {
+  console.log(e)
     res.status(500).json({
         success : false,
         message : 'Error: Cannot get task/application',
     })
     return;
 }
-
 next();
 }

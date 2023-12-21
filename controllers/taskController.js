@@ -3,6 +3,7 @@
 //@TODO add error handling to all API
 //@TODO implement add audit trail a) userID b) current State (before & after) c) date & timestamp
 //@TODO Date Formatting
+//@TO Check if can remove plan
 */
 
 const pool = require('../config/database')
@@ -11,7 +12,7 @@ const nodemailer=require('nodemailer')
 //Create App @TODO Date Formatting
 exports.createApp = async (req, res, next)=> {
  const query = "INSERT into application (App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Open, App_permit_toDOList, App_permit_Doing, App_permit_Done, App_permit_Create) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
- const {App_Acronym, App_Description, App_Rnumber, App_startdate, App_enddate, App_permit_Open, App_permit_tODoList, App_permit_Doing, App_permit_Done, App_permit_Create} = req.body;
+ const {App_Acronym, App_Description, App_Rnumber, App_startdate, App_enddate, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done, App_permit_Create} = req.body;
   try {
 
     if(!App_Acronym || !App_Rnumber)
@@ -22,7 +23,7 @@ exports.createApp = async (req, res, next)=> {
       })
     }
 
-    result = await pool.query(query, [App_Acronym, App_Description, App_Rnumber, App_startdate, App_enddate, App_permit_Open, App_permit_tODoList, App_permit_Doing, App_permit_Done, App_permit_Create])
+    result = await pool.query(query, [App_Acronym, App_Description, App_Rnumber, App_startdate, App_enddate, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done, App_permit_Create])
 
     if(result[0].affectedRows>0)
     return res.status(200).json({
@@ -424,11 +425,18 @@ exports.showTask= async(req, res, next)=> {
     return res.status(500).json({success: false, message: e})}
 };
 
-//Assign Plan
+//Assign Plan @TODO to add if add notes
 exports.assignPlan= async(req, res, next)=> {
-const username=req.user.username
+const username= req.user.username
 const Task_id = req.body.Task_id
-let querystr ="UPDATE task SET ", values =[], auditMessage
+let querystr ="UPDATE task SET ", values =[], auditMessage, New_notes= req.body.New_notes
+
+if(req.task.Task_state != "Open"){
+  return res.status(403).json({
+    success: false,
+    message: `Task state is ${req.task.Task_state}, cannot assign plan`
+  })
+}
 
   if(req.body.Task_plan){
     querystr += "Task_plan =?, "
@@ -457,12 +465,16 @@ let querystr ="UPDATE task SET ", values =[], auditMessage
       let minutes= currentDate.getMinutes()
       auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
       
-      //get task state
+      //get task state @TODO: to refactor
       const getTaskStateQ = "SELECT * FROM task WHERE Task_id =? "
       const [row, fields]= await pool.query(getTaskStateQ, Task_id)
       const taskState = row[0].Task_state
 
-      auditMessage = `${username} assigned a plan to ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
+      if(req.body.Task_plan){
+        auditMessage = `${username} assigned a plan to ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
+      } else if (!req.body.Task_plan) {
+        auditMessage = `${username} removed plan from ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
+      }
       const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
       const auditResult = pool.query(auditInsert, [auditMessage, Task_id])
       
@@ -474,12 +486,15 @@ let querystr ="UPDATE task SET ", values =[], auditMessage
 
     return res.status(500).json({
       success: false,
-      message: "Task update failed"
+      message: "Assign Plan failed"
     })
 
-    
   } catch (e) {
     console.log(e)
+    if(e.errno === 1452){
+      return res.status(400).json({success: false, message:`Plan ${Task_plan} doesn't exist`})
+     }
+    
     return res.status(500).json({success: false, message: e})}
 
 }
@@ -536,25 +551,30 @@ let noteAdded= false, querystr ="UPDATE task SET ", values =[], auditMessage
       success: false,
       message: "Task update failed"
     })
-  }catch (e){return res.status(500).json({success: false, message: e})}
+  }catch (e){
+    console.log(e)
+    return res.status(500).json({success: false, message: e})}
 };
 
 //Promote @TODO: get username from cookie
 exports.promoteTask = async(req, res, next) => { 
-  const {taskID, username} = req.body
-  let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
+  const Task_id = req.task.Task_id
+  const Task_owner = req.user.username
+  //let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
+  let {New_notes}=req.body
 
   try{
-    const [row, fields]= await pool.query(selectTask, taskID)
-    let taskState = row[0].Task_state
+    //const [row, fields]= await pool.query(selectTask, taskID)
+    //let taskState = row[0].Task_state
+    let Task_state = req.task.Task_state
     let newtaskState, sendEmail= false
 
 //Task States: "Open"->"ToDo"->"Doing"->"Done"->"Closed"
-    switch (taskState) {
+    switch (Task_state) {
       case "Open":
-        newtaskState = "To Do"
+        newtaskState = "ToDo"
         break;
-      case "To Do":
+      case "ToDo":
         newtaskState = "Doing"
         break;
       case "Doing":
@@ -562,14 +582,16 @@ exports.promoteTask = async(req, res, next) => {
         sendEmail= true
         break;
       case "Done":
-        newtaskState = "Closed"
+        newtaskState = "Close"
         break;
-      case "Closed":
+      case "Close":
         return res.json({success: false, message:"Task already closed"})
+      default:
+        return res.status(403).json({success: false, message:"Task cannot be promoted"})
     }
   
     const promote= "UPDATE task SET Task_state= ?, Task_owner= ? WHERE Task_id=?"
-    const result = await pool.query(promote, [newtaskState, username, taskID]);
+    const result = await pool.query(promote, [newtaskState, Task_owner, Task_id]);
 
     //get Date Time format
     let currentDate = new Date()
@@ -582,13 +604,13 @@ exports.promoteTask = async(req, res, next) => {
     auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
 
     if(result[0].affectedRows>0) {
-    let auditMessage = username + " promoted " + taskState + " to " + newtaskState + " on " + auditDateTime + " \n " //@TODO get user from token
+    let auditMessage = Task_owner + " promoted " + Task_state + " to " + newtaskState + " on " + auditDateTime + " \n " //@TODO get user from token
     //Attach Note if exist
-      if(req.body.userNote !=null && req.body.userNote != ""){
-        auditMessage = auditMessage += "Note: "+ req.body.userNote + " \n "
+      if(New_notes !=null && New_notes != ""){
+        auditMessage = auditMessage += "Note: "+ New_notes + " \n "
       }
     const auditUpdate = `UPDATE task SET Task_notes = CONCAT(?, Task_notes) WHERE Task_id=?`
-    const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, taskID])
+    const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, Task_id])
     sendEmail=false //@TODO Remove when presenting
       if(sendEmail){
         console.log(auditMessage, "Send Email to project lead")
@@ -606,7 +628,7 @@ exports.promoteTask = async(req, res, next) => {
           from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_FROM_EMAIL}>`,
           to: process.env.SMTP_TO_EMAIL,
           subject: `Task Done`,
-          text: `${taskID} promoted to Done`
+          text: `${Task_id} promoted to Done`
         };
       
       
@@ -626,38 +648,42 @@ exports.promoteTask = async(req, res, next) => {
     })
   }
   
-} catch (e) {return res.status(400).json({success: false, message: e})}
+} catch (e) {
+  console.log("Promote error", e)
+  return res.status(400).json({success: false, message: e})}
   
   
 };
 
-//Demote @TODO: get username from cookie
+//Demote 
 exports.demoteTask = async(req, res, next) => {
-  const {taskID, username} = req.body
-  let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
+  const Task_id = req.task.Task_id 
+  const Task_owner = req.user.username
+  //let selectTask ="SELECT Task_state FROM task WHERE Task_id =?" //check if task exist and retrieve task_state
+  let {New_notes, Task_plan=null}=req.body
 
   try{
-    const [row, fields]= await pool.query(selectTask, taskID)
-    let taskState = row[0].Task_state
+    //const [row, fields]= await pool.query(selectTask, taskID)
+    let Task_state = req.task.Task_state
     let newtaskState
 //Task States: "Closed"->"Done"->"Doing"->"To Do"->"Open"
-    switch (taskState) {
+    switch (Task_state) {
       case "Done":
         newtaskState = "Doing"
         break;
       case "Doing":
-        newtaskState = "To Do"
+        newtaskState = "ToDo"
         break;
-      case "To Do":
+      case "ToDo":
         return res.json({success: false, message:"Task cannot be demoted to open"})
-      case "Closed":
+      case "Close":
         return res.json({success: false, message:"Closed task cannot be demoted"})
       case "Open":
         return res.json({success: false, message:"Task at Open cannot be demoted further"})
     }
   
-    const demote= "UPDATE task SET Task_state= ?, Task_owner= ? WHERE Task_id=?"
-    const result = await pool.query(demote, [newtaskState, username, taskID]);
+    const demote= "UPDATE task SET Task_state= ?, Task_owner= ?, Task_plan =? WHERE Task_id=?"
+    const result = await pool.query(demote, [newtaskState, Task_owner, Task_plan, Task_id]);
 
     //get Date Time format
     let currentDate = new Date()
@@ -670,19 +696,21 @@ exports.demoteTask = async(req, res, next) => {
     auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
 
     if(result[0].affectedRows>0) {
-    let auditMessage = username + " demoted " + taskState + " to " + newtaskState + " on " + auditDateTime + "\n " //@TODO get user from token
+    let auditMessage = Task_owner + " demoted " + Task_state + " to " + newtaskState + " on " + auditDateTime + "\n " 
       //Attach Note if exist
-      if(req.body.userNote !=null && req.body.userNote != ""){
-        auditMessage = auditMessage += "Note: "+ req.body.userNote + " \n "
+      if(New_notes !=null && New_notes != ""){
+        auditMessage = auditMessage += "Note: "+ New_notes + " \n "
       }
     const auditUpdate = `UPDATE task SET Task_notes = CONCAT(?, Task_notes) WHERE Task_id=?`
-    const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, taskID])
+    const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, Task_id])
     return res.status(200).json({
       success: true,
       message: auditMessage
     })
   }
-} catch (e) {return res.status(400).json({success: false, message: e})}
+} catch (e) {
+  console.log("Demote error", e)
+  return res.status(400).json({success: false, message: e})}
   
   
 };

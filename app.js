@@ -53,8 +53,8 @@ router.route("/displayAllTask/:App_Acronym").post(validUser, showAllTask)
 router.route("/displayTask/:Task_id").get(validUser, showTask)
 router.route("/editTask").post(validUser, getTaskAppInfo, editTask) //Add Notes
 router.route("/assignPlan").post(validUser, getTaskAppInfo, userPermits, assignPlan) //Assign Plan
-router.route("/taskPromote").post(promoteTask)
-router.route("/taskDemote").post(demoteTask)
+router.route("/taskPromote").post(validUser, getTaskAppInfo, userPermits,promoteTask)
+router.route("/taskDemote").post(validUser, getTaskAppInfo, userPermits, demoteTask)
 
 //App listening on port
 const PORT = process.env.PORT;
