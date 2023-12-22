@@ -470,9 +470,10 @@ if(req.task.Task_state != "Open"){
       const [row, fields]= await pool.query(getTaskStateQ, Task_id)
       const taskState = row[0].Task_state
 
-      if(req.body.Task_plan){
-        auditMessage = `${username} assigned a plan to ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
-      } else if (!req.body.Task_plan) {
+      getTask_plan= req.body.Task_plan
+      if(getTask_plan){
+        auditMessage = `${username} assigned a plan ${getTask_plan} to ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
+      } else if (!getTask_plan) {
         auditMessage = `${username} removed plan from ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
       }
       const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
@@ -492,7 +493,7 @@ if(req.task.Task_state != "Open"){
   } catch (e) {
     console.log(e)
     if(e.errno === 1452){
-      return res.status(400).json({success: false, message:`Plan ${Task_plan} doesn't exist`})
+      return res.status(400).json({success: false, message:`Plan ${getTask_plan} doesn't exist`})
      }
     
     return res.status(500).json({success: false, message: e})}
@@ -611,7 +612,7 @@ exports.promoteTask = async(req, res, next) => {
       }
     const auditUpdate = `UPDATE task SET Task_notes = CONCAT(?, Task_notes) WHERE Task_id=?`
     const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, Task_id])
-    sendEmail=false //@TODO Remove when presenting
+    //sendEmail=false //@TODO Remove when presenting
       if(sendEmail){
         console.log(auditMessage, "Send Email to project lead")
         
