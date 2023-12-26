@@ -356,7 +356,7 @@ exports.createTask= async(req, res, next)=> {
      auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
      
      //audit message into Task Note
-     let auditMessage = "Task " + taskID + " created by " + Task_creator + " as Open on " + auditDateTime 
+     let auditMessage = `[${auditDateTime},User: ${Task_creator}, State: ${taskState}] ${taskID} created by ${Task_creator} as ${taskState} `
      result = await pool.query(query, [Task_name, Task_description, auditMessage, taskID, taskPlan, Task_app_Acronym, taskState, Task_creator, Task_owner, taskCreateDate])
  
      if(result[0].affectedRows>0) {
@@ -472,9 +472,9 @@ if(req.task.Task_state != "Open"){
 
       getTask_plan= req.body.Task_plan
       if(getTask_plan){
-        auditMessage = `${username} assigned a plan ${getTask_plan} to ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
+        auditMessage = `[${auditDateTime},User: ${username}, State: ${taskState}] ${username} assigned a plan ${getTask_plan} to ${Task_id} \n\n `
       } else if (!getTask_plan) {
-        auditMessage = `${username} removed plan from ${Task_id} on ${auditDateTime}, task state was ${taskState} \n `
+        auditMessage = `[${auditDateTime},User: ${username}, State: ${taskState}] ${username} removed plan from ${Task_id} \n\n `
       }
       const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
       const auditResult = pool.query(auditInsert, [auditMessage, Task_id])
@@ -538,7 +538,7 @@ let noteAdded= false, querystr ="UPDATE task SET ", values =[], auditMessage
 
     const taskState = row[0].Task_state
 
-    auditMessage = `${username} added a note on ${auditDateTime}, task state was ${taskState} \n `
+    auditMessage = `[${auditDateTime},User: ${username}, State: ${taskState}] ${username} added a note.\n `
 
     const auditInsert = "UPDATE task SET Task_notes= CONCAT(?, Task_notes) WHERE Task_id=? "
     const auditResult = pool.query(auditInsert, [auditMessage, Task_id])
@@ -605,10 +605,10 @@ exports.promoteTask = async(req, res, next) => {
     auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
 
     if(result[0].affectedRows>0) {
-    let auditMessage = Task_owner + " promoted " + Task_state + " to " + newtaskState + " on " + auditDateTime + " \n " //@TODO get user from token
+    let auditMessage = `[${auditDateTime},User: ${Task_owner}, State: ${Task_state}] ${Task_owner} promoted ${Task_id} from ${Task_state} to ${newtaskState} \n\n ` //@TODO get user from token
     //Attach Note if exist
       if(New_notes !=null && New_notes != ""){
-        auditMessage = auditMessage += "Note: "+ New_notes + " \n "
+        auditMessage = auditMessage += "Note: "+ New_notes + " \n\n "
       }
     const auditUpdate = `UPDATE task SET Task_notes = CONCAT(?, Task_notes) WHERE Task_id=?`
     const auditUpdateResult= await pool.query(auditUpdate, [auditMessage, Task_id])
@@ -697,7 +697,7 @@ exports.demoteTask = async(req, res, next) => {
     auditDateTime= `Date: ${day}-${month}-${year} Time: ${hours}:${minutes}`
 
     if(result[0].affectedRows>0) {
-    let auditMessage = Task_owner + " demoted " + Task_state + " to " + newtaskState + " on " + auditDateTime + "\n " 
+    let auditMessage =`[${auditDateTime},User: ${Task_owner}, State: ${Task_state}] ${Task_owner} demoted ${Task_id} from ${Task_state} to ${newtaskState} \n\n ` 
       //Attach Note if exist
       if(New_notes !=null && New_notes != ""){
         auditMessage = auditMessage += "Note: "+ New_notes + " \n "
