@@ -1,5 +1,7 @@
 /*
-//note: how express handle status 200 ok, 400 error
+//@NOTE:
+//@TODO:
+//@CHECK:
 */
 
 const express = require('express');
